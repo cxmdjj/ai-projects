@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2>模块1 · 待办列表(待办拉取工具)</h2>
+  <div class="toolbar">
+    <button onclick="pullTodos()">拉取待办审批单</button>
+    <span id="pull-summary" style="color:var(--muted);font-size:13px"></span>
+  </div>
+  <div id="msg"></div>
+  <table>
+    <thead><tr><th>审批编号</th><th>标题</th><th>申请人</th><th>申请时间</th><th>附件数</th><th>任务状态</th><th>回写状态</th></tr></thead>
+    <tbody id="todo-body"></tbody>
+  </table>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function loadTodos() {
+  const r = await apiCall("/api/tasks");
+  renderTodos(r.data ? r.data.tasks : []);
+}
+function renderTodos(tasks) {
+  const body = document.getElementById("todo-body");
+  if (!tasks.length) {
+    body.innerHTML = `<tr><td colspan="7" style="color:var(--muted)">暂无任务,点击"拉取待办审批单"开始</td></tr>`;
+    return;
+  }
+  body.innerHTML = tasks.map(t => `
+    <tr class="clickable" onclick="location.href='/tasks/${esc(t.approval_code)}'">
+      <td><b>${esc(t.approval_code)}</b></td>
+      <td>${esc(t.approval_title)}</td>
+      <td>${esc(t.applicant_name)}</td>
+      <td>${esc(t.apply_time ? t.apply_time.replace("T", " ").slice(0, 16) : "")}</td>
+      <td>${t.attachment_count}</td>
+      <td>${taskBadge(t.task_status)}</td>
+      <td>${writeBadge(t.write_status)}</td>
+    </tr>`).join("");
+}
+async function pullTodos() {
+  const el = document.getElementById("msg");
+  showMsg(el, "info", "正在拉取待办…");
+  const r = await apiCall("/api/tools/list_pending_contract_approvals", "POST", { limit: 50 });
+  if (r.success) {
+    showMsg(el, "ok", `拉取完成:共 ${r.data.total} 单,新建 ${r.data.created} 单,去重更新 ${r.data.updated} 单`);
+    renderTodos(r.data.tasks);
+  } else {
+    showMsg(el, "err", "拉取失败: " + r.error);
+  }
+}
+loadTodos();
+</script>
+{% endblock %}

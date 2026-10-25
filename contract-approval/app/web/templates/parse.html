@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2>模块3 · 解析结果(文档解析工具)</h2>
+  <div id="parse-actions"></div>
+  <div id="msg"></div>
+  <div id="parse-error"></div>
+  <h3>基本信息(8 字段)</h3>
+  <div class="field-grid" id="basic-grid"></div>
+  <h3>条款信息(8 类条款)</h3>
+  <div id="clause-list"></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const CODE = {{ code | tojson }};
+
+async function load() {
+  const r = await apiCall(`/api/tasks/${CODE}`);
+  if (!r.success) return;
+  const d = r.data;
+  const atts = (d.attachments || []).filter(a => a.download_status === "success");
+  document.getElementById("parse-actions").innerHTML = atts.map(a =>
+    `<button class="btn-sm" onclick="doParse(${a.id})">开始解析:${esc(a.file_name)}</button>`
+  ).join(" ") || `<div style="color:var(--muted)">暂无已下载附件,请先在详情页下载</div>`;
+  if (d.parse && d.parse.parse_status === "success") {
+    renderBasic(d.parse.basic_info);
+    renderClauses(d.parse.clauses);
+  } else if (d.parse && d.parse.parse_error) {
+    document.getElementById("parse-error").innerHTML =
+      `<div class="msg msg-err">上次解析失败:${esc(d.parse.parse_error)}</div>`;
+  }
+}
+
+function renderBasic(fields) {
+  document.getElementById("basic-grid").innerHTML = fields.map(f => `
+    <div class="field-card ${f.status === "missing" ? "missing" : ""}">
+      <div class="label">${esc(f.label)} ${f.status === "missing" ? "(未提取)" : ""}</div>
+      <div class="value">${f.value !== null && f.value !== undefined ? esc(f.value) : "—"}</div>
+      <div class="src">原文: ${esc(f.source_text ? f.source_text.slice(0, 60) : "-")}${f.position ? " · " + esc(f.position) : ""}</div>
+    </div>`).join("");
+}
+
+function renderClauses(clauses) {
+  document.getElementById("clause-list").innerHTML = clauses.map(c => `
+    <details class="clause-panel ${c.status === "missing" ? "missing" : ""}">
+      <summary>${esc(c.label)} ${c.status === "missing" ? "(未提取到条款)" : esc(c.position || "")}</summary>
+      <div class="body">${c.content ? esc(c.content) : "未在合同中定位到该条款"}</div>
+    </details>`).join("");
+}
+
+async function doParse(documentId) {
+  const el = document.getElementById("msg");
+  showMsg(el, "info", "正在解析文档…");
+  const r = await apiCall("/api/tools/parse_contract_document", "POST", { document_id: documentId });
+  if (r.success) {
+    showMsg(el, "ok", `解析成功(${esc(r.data.engine)}),任务已进入 reviewing,请前往"规则命中"页执行审查`);
+    renderBasic(r.data.basic_info);
+    renderClauses(r.data.clauses);
+    document.getElementById("parse-error").innerHTML = "";
+  } else {
+    showMsg(el, "err", "解析失败: " + r.error + "(任务已进入 blocked,可人工处理后重试)");
+  }
+}
+load();
+</script>
+{% endblock %}

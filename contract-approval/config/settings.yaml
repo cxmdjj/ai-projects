@@ -1,0 +1,22 @@
+# 运行配置
+approval:
+  adapter: mock            # mock | feishu
+  mock:
+    fail_write_for: []     # 演示回写失败时置 ["HT-2026-001"]
+  feishu:
+    app_id: ""
+    app_secret: ""
+
+ocr:
+  backend: fallback        # fallback | paddle
+
+db:
+  url: sqlite:///data/contract_approval.db
+  # 切换 MySQL 示例: mysql+pymysql://user:pass@127.0.0.1:3306/contract_approval?charset=utf8mb4
+
+server:
+  host: 127.0.0.1
+  port: 8010
+
+llm:
+  enabled: false           # 预留:true 时可替换为 LLM 生成摘要

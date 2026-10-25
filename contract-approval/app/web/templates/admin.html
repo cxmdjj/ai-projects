@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2>规则维护(系统管理员)</h2>
+  <div id="rule-msg"></div>
+  <table>
+    <thead><tr><th>编码</th><th>规则名称</th><th>风险</th><th>模式</th><th>状态</th><th>建议</th><th>操作</th></tr></thead>
+    <tbody id="rule-body"></tbody>
+  </table>
+  <h3>新增规则</h3>
+  <div class="toolbar" style="flex-wrap:wrap">
+    <input type="text" id="new-code" placeholder="rule_code 如 R013">
+    <input type="text" id="new-name" placeholder="rule_name">
+    <select id="new-level"><option value="low">低</option><option value="medium" selected>中</option><option value="high">高</option></select>
+    <select id="new-mode">
+      <option value="regex">regex</option><option value="keyword">keyword</option>
+      <option value="field_missing">field_missing</option><option value="clause_missing">clause_missing</option>
+      <option value="value_compare">value_compare</option>
+    </select>
+    <input type="text" id="new-suggestion" placeholder="suggestion_text" style="width:280px">
+    <button onclick="createRule()">新增</button>
+  </div>
+  <div><textarea id="new-match" class="comment-box" style="min-height:80px" placeholder='match_text JSON,如 {"field":"clause.payment","pattern":"...(\\d+)%"}'></textarea></div>
+</div>
+
+<div class="card">
+  <h2>任务管理与重试(blocked 任务可人工重试)</h2>
+  <div id="task-msg"></div>
+  <table>
+    <thead><tr><th>审批编号</th><th>标题</th><th>任务状态</th><th>回写状态</th><th>阻塞原因</th><th>操作</th></tr></thead>
+    <tbody id="task-body"></tbody>
+  </table>
+  <h3>模拟补传附件(Mock 审批系统辅助,blocked 重试演示)</h3>
+  <div class="toolbar" style="flex-wrap:wrap">
+    <input type="text" id="att-code" placeholder="审批编号 如 HT-2026-003">
+    <input type="text" id="att-id" placeholder="附件编号">
+    <input type="text" id="att-name" placeholder="文件名">
+    <input type="text" id="att-local" placeholder="示例文件路径" style="width:320px" value="samples/contracts/office_furniture_contract.pdf">
+    <button onclick="addAttachment()">补传附件</button>
+  </div>
+</div>
+
+<div class="card">
+  <h2>运行日志(task_logs)</h2>
+  <div class="toolbar">
+    <input type="text" id="log-task" placeholder="按任务ID过滤(留空=全部)">
+    <select id="log-level">
+      <option value="">全部级别</option><option value="info">info</option>
+      <option value="warn">warn</option><option value="error">error</option>
+    </select>
+    <button onclick="loadLogs()">查询</button>
+  </div>
+  <div id="log-list"></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function loadRules() {
+  const r = await apiCall("/api/admin/rules");
+  document.getElementById("rule-body").innerHTML = r.data.rules.map(rl => `
+    <tr>
+      <td>${esc(rl.rule_code)}</td>
+      <td>${esc(rl.rule_name)}</td>
+      <td>${riskBadge(rl.risk_level)}</td>
+      <td>${esc(rl.match_mode)}</td>
+      <td><button class="btn-sm ${rl.rule_status === "enabled" ? "" : "btn-gray"}" onclick="toggleRule(${rl.id}, '${rl.rule_status === "enabled" ? "disabled" : "enabled"}')">${rl.rule_status === "enabled" ? "启用中" : "已停用"}</button></td>
+      <td style="max-width:240px;color:var(--muted)">${esc(rl.suggestion_text || "")}</td>
+      <td><button class="btn-sm btn-gray" onclick="editRule(${rl.id})">编辑</button></td>
+    </tr>`).join("");
+}
+async function toggleRule(id, status) {
+  const r = await apiCall(`/api/admin/rules/${id}`, "PUT", { rule_status: status });
+  showMsg(document.getElementById("rule-msg"), r.success ? "ok" : "err", r.success ? "规则状态已更新" : r.error);
+  loadRules();
+}
+async function editRule(id) {
+  const rules = (await apiCall("/api/admin/rules")).data.rules;
+  const rl = rules.find(x => x.id === id);
+  const match = prompt(`修改 match_text JSON(${rl.rule_code}):`, rl.match_text);
+  if (match === null) return;
+  const suggestion = prompt("修改建议文本:", rl.suggestion_text || "");
+  if (suggestion === null) return;
+  const r = await apiCall(`/api/admin/rules/${id}`, "PUT", { match_text: match, suggestion_text: suggestion });
+  showMsg(document.getElementById("rule-msg"), r.success ? "ok" : "err", r.success ? "规则已更新" : r.error);
+  loadRules();
+}
+async function createRule() {
+  const payload = {
+    rule_code: document.getElementById("new-code").value.trim(),
+    rule_name: document.getElementById("new-name").value.trim(),
+    risk_level: document.getElementById("new-level").value,
+    match_mode: document.getElementById("new-mode").value,
+    match_text: document.getElementById("new-match").value.trim() || "{}",
+    suggestion_text: document.getElementById("new-suggestion").value.trim(),
+  };
+  const r = await apiCall("/api/admin/rules", "POST", payload);
+  showMsg(document.getElementById("rule-msg"), r.success ? "ok" : "err", r.success ? "规则已新增" : r.error);
+  loadRules();
+}
+
+async function loadTasks() {
+  const r = await apiCall("/api/admin/tasks");
+  document.getElementById("task-body").innerHTML = r.data.tasks.map(t => `
+    <tr>
+      <td><b>${esc(t.approval_code)}</b></td>
+      <td><a href="/tasks/${esc(t.approval_code)}">${esc(t.approval_title)}</a></td>
+      <td>${taskBadge(t.task_status)}</td>
+      <td>${writeBadge(t.write_status)}</td>
+      <td style="color:#b91c1c;max-width:240px">${esc(t.block_reason || "-")}</td>
+      <td>${t.task_status === "blocked" ? `<button class="btn-sm" onclick="retry('${esc(t.approval_code)}')">重试(解析)</button>` : "-"}</td>
+    </tr>`).join("");
+}
+async function retry(code) {
+  const r = await apiCall(`/api/tasks/${code}/retry`, "POST", { target_stage: "parsing" });
+  showMsg(document.getElementById("task-msg"), r.success ? "ok" : "err", r.success ? `已重试 ${code} → parsing` : r.error);
+  loadTasks();
+}
+async function addAttachment() {
+  const r = await apiCall("/api/mock/add_attachment", "POST", {
+    instance_id: document.getElementById("att-code").value.trim(),
+    attachment_id: document.getElementById("att-id").value.trim(),
+    file_name: document.getElementById("att-name").value.trim(),
+    file_type: (document.getElementById("att-name").value.split(".").pop() || "pdf").toLowerCase(),
+    local_file: document.getElementById("att-local").value.trim(),
+  });
+  showMsg(document.getElementById("task-msg"), r.success ? "ok" : "err", r.success ? r.data.message : r.error);
+}
+async function loadLogs() {
+  const tid = document.getElementById("log-task").value.trim();
+  const level = document.getElementById("log-level").value;
+  let url = "/api/admin/logs?limit=100";
+  if (tid) url += "&task_id=" + tid;
+  if (level) url += "&log_level=" + level;
+  const r = await apiCall(url);
+  document.getElementById("log-list").innerHTML = r.data.logs.map(l => `
+    <div class="log-line">
+      <span class="t">#${l.id} ${esc(l.created_at ? l.created_at.replace("T", " ").slice(0, 19) : "")} task=${l.task_id ?? "-"}</span>
+      [${esc(l.log_level)}/${esc(l.log_type)}] ${esc(l.log_content)}
+    </div>`).join("") || `<div style="color:var(--muted)">暂无日志</div>`;
+}
+loadRules(); loadTasks(); loadLogs();
+</script>
+{% endblock %}

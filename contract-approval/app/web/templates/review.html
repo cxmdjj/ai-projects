@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2>模块4 · 规则命中(规则审查工具)</h2>
+  <div class="toolbar">
+    <button onclick="runReview()">执行规则审查</button>
+    <span id="risk-holder"></span>
+  </div>
+  <div id="msg"></div>
+  <h3>命中规则列表</h3>
+  <table>
+    <thead><tr><th>规则名称</th><th>风险等级</th><th>命中证据</th><th>证据位置</th><th>建议</th></tr></thead>
+    <tbody id="hits-body"></tbody>
+  </table>
+  <h3>审批关注点</h3>
+  <ol id="focus-list" style="margin-left:20px;line-height:2"></ol>
+  <h3>中文摘要</h3>
+  <div id="summary" style="line-height:1.8"></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const CODE = {{ code | tojson }};
+let taskId = null;
+
+async function load() {
+  const r = await apiCall(`/api/tasks/${CODE}`);
+  if (!r.success || !r.data.task) return;
+  taskId = r.data.task.id;
+  if (r.data.review) {
+    renderResult(r.data);
+  }
+}
+
+function renderResult(d) {
+  const rv = d.review;
+  document.getElementById("risk-holder").innerHTML =
+    `总体风险等级 <span class="badge badge-risk-${rv.overall_risk_level}">${esc(rv.overall_risk_level)}</span>`;
+  document.getElementById("hits-body").innerHTML = d.hits.length ? d.hits.map(h => `
+    <tr>
+      <td>${esc(h.rule_name)} <span style="color:var(--muted)">(${esc(h.rule_code)})</span></td>
+      <td>${riskBadge(h.risk_level)}</td>
+      <td style="max-width:340px;word-break:break-all">${esc(h.evidence_text)}</td>
+      <td>${esc(h.evidence_position || "-")}</td>
+      <td style="max-width:260px;color:var(--muted)">${esc(h.suggestion_text || "")}</td>
+    </tr>`).join("") : `<tr><td colspan="5" style="color:var(--muted)">无命中</td></tr>`;
+  document.getElementById("focus-list").innerHTML = rv.focus_points.map(f =>
+    `<li>${esc(f.focus)}</li>`).join("");
+  document.getElementById("summary").textContent = rv.summary_text;
+}
+
+async function runReview() {
+  if (!taskId) { await load(); }
+  if (!taskId) {
+    showMsg(document.getElementById("msg"), "err", "任务不存在,请先拉取待办");
+    return;
+  }
+  const el = document.getElementById("msg");
+  showMsg(el, "info", "正在执行规则审查…");
+  const r = await apiCall("/api/tools/run_contract_rules", "POST", { case_id: taskId });
+  if (r.success) {
+    showMsg(el, "ok", `审查完成:命中 ${r.data.hits.length} 项规则,总风险等级【${r.data.overall_risk_level}】`);
+    await load();
+  } else {
+    showMsg(el, "err", "审查失败: " + r.error);
+  }
+}
+load();
+</script>
+{% endblock %}

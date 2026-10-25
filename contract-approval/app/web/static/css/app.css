@@ -1,0 +1,94 @@
+:root {
+  --primary: #2563eb;
+  --border: #e2e8f0;
+  --bg: #f8fafc;
+  --text: #1e293b;
+  --muted: #64748b;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  background: var(--bg); color: var(--text); font-size: 14px;
+}
+.topbar {
+  display: flex; justify-content: space-between; align-items: center;
+  background: #fff; border-bottom: 1px solid var(--border); padding: 12px 24px;
+}
+.brand { font-size: 17px; font-weight: 700; }
+.main-nav a, .task-nav a {
+  color: var(--primary); text-decoration: none; margin-left: 16px; font-size: 14px;
+}
+.main-nav a:hover, .task-nav a:hover { text-decoration: underline; }
+.task-nav { background: #fff; border-bottom: 1px solid var(--border); padding: 8px 24px; }
+.task-nav a:first-child { margin-left: 0; }
+.container { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
+.footer { text-align: center; color: var(--muted); padding: 24px; font-size: 12px; }
+
+.card {
+  background: #fff; border: 1px solid var(--border); border-radius: 8px;
+  padding: 20px; margin-bottom: 16px;
+}
+.card h2 { font-size: 16px; margin-bottom: 14px; }
+.card h3 { font-size: 14px; margin: 16px 0 8px; color: var(--muted); }
+
+button, .btn {
+  background: var(--primary); color: #fff; border: none; border-radius: 6px;
+  padding: 7px 14px; cursor: pointer; font-size: 13px;
+}
+button:hover { opacity: 0.88; }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn-gray { background: #94a3b8; }
+
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 13px; }
+th { background: #f1f5f9; color: var(--muted); font-weight: 600; }
+tr.clickable { cursor: pointer; }
+tr.clickable:hover { background: #f1f5f9; }
+
+.badge {
+  display: inline-block; padding: 2px 9px; border-radius: 10px;
+  font-size: 12px; white-space: nowrap;
+}
+.badge-pending { background: #e2e8f0; color: #475569; }
+.badge-parsing, .badge-reviewing { background: #fef3c7; color: #92400e; }
+.badge-blocked { background: #fee2e2; color: #b91c1c; }
+.badge-done { background: #dcfce7; color: #166534; }
+.badge-write-success { background: #dcfce7; color: #166534; }
+.badge-write-failed { background: #fee2e2; color: #b91c1c; }
+.badge-write-writing { background: #fef3c7; color: #92400e; }
+.badge-write-not_written { background: #e2e8f0; color: #475569; }
+.badge-risk-high { background: #dc2626; color: #fff; }
+.badge-risk-medium { background: #f59e0b; color: #fff; }
+.badge-risk-low { background: #22c55e; color: #fff; }
+.badge-risk-高 { background: #dc2626; color: #fff; }
+.badge-risk-中 { background: #f59e0b; color: #fff; }
+.badge-risk-低 { background: #22c55e; color: #fff; }
+
+.msg { padding: 10px 14px; border-radius: 6px; margin: 10px 0; font-size: 13px; }
+.msg-info { background: #dbeafe; color: #1e40af; }
+.msg-ok { background: #dcfce7; color: #166534; }
+.msg-err { background: #fee2e2; color: #b91c1c; }
+
+.block-banner {
+  background: #fee2e2; border: 1px solid #fca5a5; color: #b91c1c;
+  border-radius: 6px; padding: 12px 16px; margin-bottom: 14px; font-size: 13px;
+}
+.field-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.field-card { border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }
+.field-card .label { color: var(--muted); font-size: 12px; }
+.field-card .value { font-size: 14px; margin: 4px 0; font-weight: 600; }
+.field-card .src { color: var(--muted); font-size: 12px; word-break: break-all; }
+.field-card.missing { background: #fff7ed; border-color: #fdba74; }
+.field-card.missing .value { color: #c2410c; }
+
+.clause-panel { border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; }
+.clause-panel summary { padding: 10px 12px; cursor: pointer; font-weight: 600; font-size: 13px; }
+.clause-panel .body { padding: 4px 14px 12px; color: #334155; font-size: 13px; white-space: pre-wrap; }
+.clause-panel.missing { border-color: #fdba74; background: #fff7ed; }
+
+textarea.comment-box { width: 100%; min-height: 320px; font-size: 13px; line-height: 1.7; padding: 12px;
+  border: 1px solid var(--border); border-radius: 6px; font-family: inherit; }
+.toolbar { margin: 12px 0; display: flex; gap: 10px; align-items: center; }
+.log-line { padding: 6px 8px; border-bottom: 1px dashed var(--border); font-size: 12px; color: #334155; }
+.log-line .t { color: var(--muted); }
+select, input[type=text] { border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 13px; }

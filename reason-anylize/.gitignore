@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+*.egg-info/
+
+# 运行时数据
+backend/data/
+backend/storage/
+backend/logs/
+auth-service/data/
+
+# Node
+node_modules/
+frontend/dist/
+
+# 环境与本地配置
+.env
+*.local
+
+# 编辑器
+.idea/
+.vscode/
+.DS_Store

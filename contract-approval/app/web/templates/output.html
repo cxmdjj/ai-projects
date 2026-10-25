@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2>模块5 · 结果处理(结果保存 + 评论回写)</h2>
+  <div id="msg"></div>
+  <div id="no-review" class="msg msg-info" style="display:none">尚无审查结果,请先到"规则命中"页执行规则审查。</div>
+  <div id="output-area" style="display:none">
+    <h3>审查结论</h3>
+    <div id="conclusion" style="line-height:1.9"></div>
+    <h3>回写内容(可编辑,保存前请法务复核确认)</h3>
+    <textarea id="comment-box" class="comment-box"></textarea>
+    <div class="toolbar">
+      <button onclick="doSave()">保存结果</button>
+      <button onclick="doWrite()">写回审批评论区</button>
+      <span id="write-state"></span>
+    </div>
+    <h3>回写日志(comment_logs)</h3>
+    <div id="log-list"></div>
+    <h3>Mock 审批系统收到的评论原文</h3>
+    <pre id="mock-comment" style="white-space:pre-wrap;background:#f8fafc;border:1px solid var(--border);border-radius:6px;padding:12px;font-size:12px"></pre>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const CODE = {{ code | tojson }};
+let reviewId = null;
+
+async function load() {
+  const r = await apiCall(`/api/tasks/${CODE}`);
+  if (!r.success || !r.data.task) return;
+  const d = r.data;
+  if (!d.review) {
+    document.getElementById("no-review").style.display = "block";
+    document.getElementById("output-area").style.display = "none";
+    return;
+  }
+  document.getElementById("no-review").style.display = "none";
+  document.getElementById("output-area").style.display = "block";
+  reviewId = d.review.id;
+  const rv = d.review;
+  document.getElementById("conclusion").innerHTML =
+    `<b>总体风险等级:</b> <span class="badge badge-risk-${rv.overall_risk_level}">${esc(rv.overall_risk_level)}</span><br>
+     <b>中文摘要:</b> ${esc(rv.summary_text)}<br>
+     <b>审批关注点:</b><br>` + rv.focus_points.map(f => `　· ${esc(f.focus)}`).join("<br>");
+  document.getElementById("comment-box").value = rv.comment_text || "";
+  document.getElementById("write-state").innerHTML = writeBadge(d.task.write_status);
+  document.getElementById("log-list").innerHTML = d.comment_logs.map(l => `
+    <div class="log-line"><span class="t">${esc(l.created_at ? l.created_at.replace("T", " ").slice(0, 19) : "")}</span>
+    [${esc(l.write_status)}] ${esc(l.write_response_text || "")}</div>`).join("") ||
+    `<div style="color:var(--muted)">暂无回写记录</div>`;
+  const mc = await apiCall("/api/mock/comments");
+  document.getElementById("mock-comment").textContent =
+    (mc.success && mc.data.comments[CODE]) ? mc.data.comments[CODE] : "(尚未回写)";
+}
+
+async function doSave() {
+  const el = document.getElementById("msg");
+  const r = await apiCall(`/api/tasks/${CODE}`);
+  if (!r.success || !r.data.review) { showMsg(el, "err", "无审查结果可保存"); return; }
+  const rv = r.data.review;
+  const comment = document.getElementById("comment-box").value;
+  showMsg(el, "info", "正在保存审查结果…");
+  const sv = await apiCall("/api/tools/save_review_result", "POST", {
+    case_id: r.data.task.id,
+    overall_risk_level: rv.overall_risk_level,
+    summary_text: rv.summary_text,
+    focus_points_json: JSON.stringify(rv.focus_points),
+    comment_text: comment,
+  });
+  if (sv.success) showMsg(el, "ok", `保存成功 (review_id=${sv.data.review_id}),任务已完成`);
+  else showMsg(el, "err", "保存失败: " + sv.error);
+  await load();
+}
+
+async function doWrite() {
+  const el = document.getElementById("msg");
+  if (!reviewId) { showMsg(el, "err", "请先保存结果"); return; }
+  showMsg(el, "info", "正在写回审批评论区…");
+  const w = await apiCall("/api/tools/write_approval_comment", "POST",
+    { instance_id: CODE, review_id: reviewId });
+  if (w.success) showMsg(el, "ok", "回写成功: " + (w.data.response || ""));
+  else showMsg(el, "err", "回写失败: " + w.error + "(可修复后重试)");
+  await load();
+}
+load();
+</script>
+{% endblock %}

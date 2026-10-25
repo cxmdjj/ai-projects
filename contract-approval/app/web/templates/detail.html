@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2>模块2 · 详情查看(审批详情 + 附件下载)</h2>
+  <div id="block-banner"></div>
+  <div id="head"></div>
+  <h3>附件信息</h3>
+  <div id="msg"></div>
+  <table>
+    <thead><tr><th>附件编号</th><th>文件名</th><th>类型</th><th>下载状态</th><th>MD5</th><th>操作</th></tr></thead>
+    <tbody id="att-body"></tbody>
+  </table>
+  <div id="download-info"></div>
+  <h3>审批表单数据</h3>
+  <table id="form-body"></table>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const CODE = {{ code | tojson }};
+let state = null;
+
+async function load() {
+  const r = await apiCall(`/api/tasks/${CODE}`);
+  if (!r.success) {
+    document.getElementById("msg").innerHTML = `<div class="msg msg-err">${esc(r.error)}</div>`;
+    return;
+  }
+  const d = r.data;
+  state = d;
+  const t = d.task;
+  document.getElementById("head").innerHTML = `
+    <div class="toolbar" style="align-items:center">
+      <b style="font-size:15px">${esc(t.approval_title)}</b>
+      ${taskBadge(t.task_status)} ${writeBadge(t.write_status)}
+    </div>
+    <div style="color:var(--muted);font-size:13px;line-height:1.8">
+      申请人:${esc(t.applicant_name)} · 申请时间:${esc(t.apply_time ? t.apply_time.replace("T", " ").slice(0, 16) : "")}<br>
+      唯一业务标识:${esc(t.approval_code)} · 附件数量:${t.attachment_count}
+    </div>`;
+  if (t.task_status === "blocked") {
+    document.getElementById("block-banner").innerHTML = `
+      <div class="block-banner">
+        ⚠️ 任务已阻塞:${esc(t.block_reason || "未知原因")}<br>
+        处理方式:人工排查后选择重试目标阶段 →
+        <select id="retry-target">
+          <option value="parsing">重新解析(parsing)</option>
+          <option value="reviewing">重新审查(reviewing)</option>
+        </select>
+        <button class="btn-sm" onclick="doRetry()">重试</button>
+      </div>`;
+  }
+  document.getElementById("att-body").innerHTML = d.attachments.map(a => `
+    <tr>
+      <td>${esc(a.attachment_id)}</td>
+      <td>${esc(a.file_name)}</td>
+      <td>${esc(a.file_type)}</td>
+      <td><span class="badge badge-${a.download_status === "success" ? "done" : (a.download_status === "failed" ? "blocked" : "pending")}">${esc(a.download_status)}</span></td>
+      <td style="font-size:12px">${a.md5 ? esc(a.md5.slice(0, 12) + "…") : "-"}</td>
+      <td><button class="btn-sm" onclick="download('${esc(a.attachment_id)}', '${esc(a.file_name)}')">下载</button></td>
+    </tr>`).join("") || `<tr><td colspan="6" style="color:var(--muted)">审批单无附件</td></tr>`;
+  document.getElementById("form-body").innerHTML = Object.entries(d.form_data || {}).map(
+    ([k, v]) => `<tr><td style="width:180px;color:var(--muted)">${esc(k)}</td><td>${esc(v)}</td></tr>`).join("");
+}
+
+async function download(attId, fileName) {
+  const el = document.getElementById("msg");
+  showMsg(el, "info", `正在下载附件 ${attId} …`);
+  const r = await apiCall("/api/tools/download_contract_attachment", "POST",
+    { instance_id: CODE, attachment_id: attId, file_name: fileName });
+  if (r.success) {
+    showMsg(el, "ok", `下载成功:${esc(r.data.local_path)} (md5=${esc(r.data.md5)}, ${r.data.size} 字节)`);
+  } else {
+    showMsg(el, "err", "下载失败: " + r.error);
+  }
+  load();
+}
+
+async function doRetry() {
+  const target = document.getElementById("retry-target").value;
+  const r = await apiCall(`/api/tasks/${CODE}/retry`, "POST", { target_stage: target });
+  const el = document.getElementById("msg");
+  if (r.success) showMsg(el, "ok", `重试成功,任务已进入 ${r.data.task_status},请继续后续步骤`);
+  else showMsg(el, "err", "重试失败: " + r.error);
+  load();
+}
+load();
+</script>
+{% endblock %}

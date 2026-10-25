@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>登录 · 认证中心</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+    background: linear-gradient(135deg, #eef2ff 0%, #f6f8fc 100%);
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  }
+  .card {
+    background: #fff; width: 380px; padding: 36px 32px; border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(31, 60, 136, .12);
+  }
+  .card h1 { font-size: 20px; color: #1f3c88; text-align: center; margin-bottom: 6px; }
+  .card .sub { font-size: 13px; color: #8c8c8c; text-align: center; margin-bottom: 24px; }
+  label { display: block; font-size: 13px; color: #555; margin: 14px 0 6px; }
+  input[type=text], input[type=password] {
+    width: 100%; height: 40px; padding: 0 12px; font-size: 14px;
+    border: 1px solid #d9d9d9; border-radius: 6px; outline: none;
+  }
+  input:focus { border-color: #1677ff; box-shadow: 0 0 0 2px rgba(22,119,255,.15); }
+  button {
+    width: 100%; height: 42px; margin-top: 24px; font-size: 15px; color: #fff;
+    background: #1677ff; border: none; border-radius: 6px; cursor: pointer;
+  }
+  button:hover { background: #4096ff; }
+  .error { margin-top: 14px; font-size: 13px; color: #cf1322; text-align: center; }
+  .accounts { margin-top: 22px; padding-top: 16px; border-top: 1px dashed #e8e8e8; }
+  .accounts .tip { font-size: 12px; color: #8c8c8c; margin-bottom: 8px; }
+  .account {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 10px; margin-bottom: 6px; font-size: 13px; color: #333;
+    background: #fafafa; border: 1px solid #f0f0f0; border-radius: 6px; cursor: pointer;
+  }
+  .account:hover { border-color: #1677ff; }
+  .account .role { color: #1677ff; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>经营归因分析系统</h1>
+  <div class="sub">授权登录 · 认证中心</div>
+  <form method="post" action="/oauth/login">
+    <input type="hidden" name="client_id" value="{{ client_id }}">
+    <input type="hidden" name="redirect_uri" value="{{ redirect_uri }}">
+    <input type="hidden" name="state" value="{{ state }}">
+    <label for="username">用户名</label>
+    <input type="text" id="username" name="username" autocomplete="username" required>
+    <label for="password">密码</label>
+    <input type="password" id="password" name="password" autocomplete="current-password" required>
+    <button type="submit">登 录</button>
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  </form>
+  <div class="accounts">
+    <div class="tip">演示账号(点击填充):</div>
+    {% for u in test_users %}
+    <div class="account" onclick="fill('{{ u.username }}', '{{ u.password }}')">
+      <span>{{ u.username }} / {{ u.password }}</span>
+      <span class="role">{{ u.label }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+<script>
+  function fill(u, p) {
+    document.getElementById('username').value = u;
+    document.getElementById('password').value = p;
+  }
+</script>
+</body>
+</html>

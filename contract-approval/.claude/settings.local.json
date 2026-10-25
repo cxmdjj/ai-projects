@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv --version)",
+      "Bash(uv sync *)",
+      "Bash(uv run *)",
+      "Bash(rm -f data/contract_approval.db)",
+      "Bash(rm -rf data/attachments)"
+    ]
+  }
+}

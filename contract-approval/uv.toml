@@ -1,0 +1,2 @@
+# 项目级 uv 配置:覆盖全局镜像(全局清华镜像当前不可用)
+index-url = "https://pypi.org/simple"

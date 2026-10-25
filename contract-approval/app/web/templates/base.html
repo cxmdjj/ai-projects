@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>合同审批自动审查系统</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">📋 合同审批自动审查系统</div>
+    <nav class="main-nav">
+      <a href="/">待办列表</a>
+      <a href="/admin">管理页</a>
+    </nav>
+  </header>
+  {% if code is defined %}
+  <nav class="task-nav">
+    <a href="/tasks/{{ code }}">详情查看</a>
+    <a href="/tasks/{{ code }}/parse">解析结果</a>
+    <a href="/tasks/{{ code }}/review">规则命中</a>
+    <a href="/tasks/{{ code }}/output">结果回写</a>
+  </nav>
+  {% endif %}
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="footer">合同审批自动审查系统 · 自动审查意见仅供法务参考,不代替人工审批</footer>
+  <script src="/static/js/api.js"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
